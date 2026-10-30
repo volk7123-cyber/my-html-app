@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="ru" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Личный Финансовый Дашборд</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Стилизация ползунков */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 4px;
+        }
+        .dark input[type=range]::-webkit-slider-runnable-track {
+            background: #334155;
+        }
+        /* Скрытие стрелочек у числовых инпутов для аккуратности */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 min-h-screen transition-colors duration-200">
+
+    <!-- Уведомление (Toast) -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none bg-slate-800 dark:bg-white text-white dark:text-slate-900 px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 text-sm font-medium">
+        <i class="ph-fill ph-check-circle text-emerald-400 dark:text-emerald-600 text-lg"></i>
+        <span id="toast-msg">Данные сохранены</span>
+    </div>
+
+    <!-- Модальное окно подтверждения сброса -->
+    <div id="reset-modal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100 dark:border-slate-700">
+            <div class="flex items-center gap-3 text-amber-500 mb-3">
+                <i class="ph-fill ph-warning-circle text-3xl"></i>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white">Сбросить все изменения?</h3>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-300 mb-6">
+                Все добавленные вами доходы, расходы и настройки калькулятора вернутся к исходным значениям по умолчанию.
+            </p>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeResetModal()" class="px-4 py-2 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                    Отмена
+                </button>
+                <button onclick="confirmReset()" class="px-4 py-2 rounded-xl text-sm font-medium bg-rose-600 hover:bg-rose-700 text-white transition shadow-sm">
+                    Да, сбросить
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Верхняя шапка -->
+    <header class="bg-white dark:bg-slate-800/90 border-b border-slate-200 dark:border-slate-700/80 sticky top-0 z-30 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+                    <i class="ph-bold ph-wallet text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base sm:text-lg leading-tight">Финансовый Навигатор</h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">Управление бюджетом, потоками и подушкой безопасности</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-3">
+                <button onclick="openResetModal()" class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition" title="Вернуть исходные данные">
+                    <i class="ph ph-arrow-counter-clockwise text-base"></i>
+                    <span class="hidden md:inline">Сбросить данные</span>
+                </button>
+                <button onclick="toggleTheme()" class="p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition" title="Переключить тему">
+                    <i id="theme-icon" class="ph ph-moon text-lg"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Основной контент -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8">
+
+        <!-- 1. Верхняя сводная панель (KPI) -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+            <!-- Общий доход -->
+            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/70 flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-400">Общий доход</span>
+                    <span class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                        <i class="ph-bold ph-trend-up text-lg"></i>
+                    </span>
+                </div>
+                <div>
+                    <div id="kpi-income" class="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">0 ₽</div>
+                    <div id="kpi-income-count" class="text-xs text-slate-500 dark:text-slate-400 mt-1">3 источника поступлений</div>
+                </div>
+            </div>
+
+            <!-- Общие расходы -->
+            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/70 flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-400">Все расходы</span>
+                    <span class="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                        <i class="ph-bold ph-trend-down text-lg"></i>
+                    </span>
+                </div>
+                <div>
+                    <div id="kpi-expense" class="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">0 ₽</div>
+                    <div id="kpi-expense-mandatory" class="text-xs text-slate-500 dark:text-slate-400 mt-1">Обязательные: 0 ₽</div>
+                </div>
+            </div>
+
+            <!-- Свободный остаток -->
+            <div id="kpi-balance-card" class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/70 flex flex-col justify-between transition-colors">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-400">Свободный остаток</span>
+                    <span id="kpi-balance-icon" class="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                        <i class="ph-bold ph-piggy-bank text-lg"></i>
+                    </span>
+                </div>
+                <div>
+                    <div class="flex items-baseline gap-2">
+                        <div id="kpi-balance" class="text-2xl sm:text-3xl font-bold text-emerald-600 dark:text-emerald-400">0 ₽</div>
+                        <span id="kpi-balance-pct" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300">0%</span>
+                    </div>
+                    <div id="kpi-balance-sub" class="text-xs text-slate-500 dark:text-slate-400 mt-1">Доступно для накоплений</div>
+                </div>
+            </div>
+
+            <!-- Нагрузка обязательных платежей -->
+            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/70 flex flex-col justify-between">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-400">Обязательная нагрузка</span>
+                    <span class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                        <i class="ph-bold ph-house-line text-lg"></i>
+                    </span>
+                </div>
+                <div>
+                    <div class="flex items-baseline gap-2">
+                        <div id="kpi-burden" class="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">0%</div>
+                        <span id="kpi-mortgage-only" class="text-xs text-slate-500 dark:text-slate-400">Ипотека: 0%</span>
+                    </div>
+                    <div class="w-full bg-slate-100 dark:bg-slate-700 h-1.5 rounded-full mt-2 overflow-hidden">
+                        <div id="kpi-burden-bar" class="bg-amber-500 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Редактор Доходов и Расходов -->
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Блок "Доходы" (5 колонок на десктопе) -->
+            <div class="lg:col-span-5 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/70 p-5 sm:p-6 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                            <h2 class="text-lg font-bold">Доходы</h2>
+                        </div>
+                        <span id="incomes-header-sum" class="text-sm font-semibold text-emerald-600 dark:text-emerald-400">105 649 ₽</span>
+                    </div>
+
+                    <!-- Заголовки колонок -->
+                    <div class="grid grid-cols-12 gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2 px-1">
+                        <div class="col-span-5">Название</div>
+                        <div class="col-span-4">Сумма (₽)</div>
+                        <div class="col-span-2 text-center" title="Число месяца">Число</div>
+                        <div class="col-span-1"></div>
+                    </div>
+
+                    <!-- Список доходов -->
+                    <div id="incomes-list" class="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+                        <!-- Генерируется через JS -->
+                    </div>
+                </div>
+
+                <!-- Форма добавления дохода -->
+                <div class="mt-6 pt-4 border-t border-slate-100 dark:border-slate-700/80">
+                    <p class="text-xs font-medium text-slate-400 mb-2">Добавить источник дохода</p>
+                    <div class="grid grid-cols-12 gap-2">
+                        <input id="new-inc-title" type="text" placeholder="Например, Подработка" class="col-span-5 px-3 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-brand-500">
+                        <input id="new-inc-amount" type="number" placeholder="Сумма" min="0" step="500" class="col-span-4 px-3 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-brand-500">
+                        <input id="new-inc-day" type="number" placeholder="День" min="1" max="31" class="col-span-2 px-2 py-2 text-sm text-center rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-brand-500" title="День поступления (1-31)">
+                        <button onclick="addIncome()" class="col-span-1 flex items-center justify-center rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition shadow-sm" title="Добавить доход">
+                            <i class="ph-bold ph-plus"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Блок "Расходы" (7 колонок на десктопе) -->
+            <div class="lg:col-span-7 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/70 p-5 sm:p-6 flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
+                        <div class="flex items-center gap-2.5">
+                            <span class="w-3 h-3 rounded-full bg-rose-500"></span>
+                            <h2 class="text-lg font-bold">Расходы</h2>
+                        </div>
+                        <span id="expenses-header-sum" class="text-sm font-semibold text-rose-600 dark:text-rose-400">96 500 ₽</span>
+                    </div>
+
+                    <!-- Заголовки колонок -->
+                    <div class="hidden sm:grid sm:grid-cols-12 gap-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2 px-1">
+                        <div class="col-span-4">Статья расхода</div>
+                        <div class="col-span-3">Категория</div>
+                        <div class="col-span-3">Сумма (₽)</div>
+                        <div class="col-span-1 text-center" title="Число месяца (опционально)">День</div>
+                        <div class="col-span-1"></div>
+                    </div>
+
+                    <!-- Список расходов -->
+                    <div id="expenses-list" class="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+                        <!-- Генерируется через JS -->
+                    </div>
+                </div>
+
+                <!-- Форма добавления расхода -->
+                <div class="mt-6 pt-4 border-t border-slate-100 dark:border-slate-700/80">
+                    <p class="text-xs font-medium text-slate-400 mb-2">Добавить статью расхода (оставьте день пустым для равномерных трат)</p>
+                    <div class="grid grid-cols-12 gap-2">
+                        <input id="new-exp-title" type="text" placeholder="Название расхода" class="col-span-12 sm:col-span-4 px-3 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-brand-500">
+                        <select id="new-exp-cat" class="col-span-6 sm:col-span-3 px-2.5 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-brand-500">
+                            <option value="mandatory">Обязательные</option>
+                            <option value="living">Быт и питание</option>
+                            <option value="family">Семья и отдых</option>
+                            <option value="other">Прочее</option>
+                        </select>
+                        <input id="new-exp-amount" type="number" placeholder="Сумма" min="0" step="500" class="col-span-4 sm:col-span-3 px-3 py-2 text-sm rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-brand-500">
+                        <input id="new-exp-day" type="number" placeholder="День" min="1" max="31" class="col-span-1 sm:col-span-1 px-1 py-2 text-sm text-center rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-brand-500" title="Число списания (опционально)">
+                        <button onclick="addExpense()" class="col-span-1 sm:col-span-1 flex items-center justify-center rounded-xl bg-rose-600 hover:bg-rose-700 text-white transition shadow-sm" title="Добавить расход">
+                            <i class="ph-bold ph-plus"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- 3. Визуализация: Структура бюджета и Календарь-таймлайн движения денег -->
+        <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Кольцевая диаграмма структуры бюджета (5 колонок) -->
+            <div class="lg:col-span-5 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/70 p-5 sm:p-6 flex flex-col justify-between">
+                <div>
+                    <h2 class="text-lg font-bold mb-1">Структура бюджета</h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mb-6">Распределение вашего дохода по категориям и сбережениям</p>
+
+                    <!-- SVG Donut Chart -->
+                    <div class="relative w-48 h-48 mx-auto my-4 flex items-center justify-center">
+                        <svg id="donut-svg" viewBox="0 0 42 42" class="w-full h-full -rotate-90 transform"></svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none px-4">
+                            <span class="text-[11px] uppercase tracking-wider text-slate-400 font-medium">Расходы</span>
+                            <span id="donut-center-val" class="text-lg font-bold text-slate-800 dark:text-white leading-tight">91%</span>
+                            <span id="donut-center-sub" class="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium mt-0.5">+9 149 ₽</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Легенда и прогресс-бары по категориям -->
+                <div id="category-breakdown" class="space-y-3 mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+                    <!-- Заполняется через JS -->
+                </div>
+            </div>
+
+            <!-- Календарь движения денег (Cash Flow Timeline от 1 до 31 числа) (7 колонок) -->
+            <div class="lg:col-span-7 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/70 p-5 sm:p-6 flex flex-col justify-between">
+                <div>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                        <div>
+                            <h2 class="text-lg font-bold">Календарь движения денег (1–31 число)</h2>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">Проверка кассовых разрывов к датам обязательных платежей и ипотеки</p>
+                        </div>
+                        <div id="cashflow-status-badge" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 self-start">
+                            <i class="ph-fill ph-check-circle text-sm"></i>
+                            <span>Кассовых разрывов нет</span>
+                        </div>
+                    </div>
+
+                    <!-- Ключевые события месяца (Таймлайн карточек) -->
+                    <div id="timeline-events" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-5">
+                        <!-- Генерируется через JS -->
+                    </div>
+
+                    <!-- Пояснение расчета -->
+                    <div class="bg-slate-50 dark:bg-slate-900/60 rounded-xl p-3.5 mb-4 border border-slate-100 dark:border-slate-700/60 text-xs text-slate-600 dark:text-slate-300 flex items-start gap-2.5">
+                        <i class="ph-fill ph-info text-brand-500 text-base mt-0.5 shrink-0"></i>
+                        <div id="cashflow-explanation">
+                            Расходы без точной даты (еда, дочка, развлечения) распределяются равномерно по дням месяца (~1 000 ₽/день), а платежи с датой списываются в указанный день.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Сетка 31 дня месяца -->
+                <div>
+                    <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+                        <span>Динамика остатка на счете внутри месяца:</span>
+                        <div class="flex items-center gap-3">
+                            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Приход</span>
+                            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Платеж по дате</span>
+                        </div>
+                    </div>
+                    <div id="calendar-grid" class="grid grid-cols-7 sm:grid-cols-8 gap-1.5">
+                        <!-- 31 день генерируется через JS -->
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- 4. Интерактивный калькулятор "Финансовая подушка безопасности" -->
+        <section class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700/70 p-5 sm:p-7">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-100 dark:border-slate-700">
+                <div>
+                    <div class="inline-flex items-center gap-2 text-brand-600 dark:text-brand-400 text-xs font-bold uppercase tracking-wider mb-1">
+                        <i class="ph-bold ph-shield-check text-base"></i>
+                        <span>Стратегия безопасности</span>
+                    </div>
+                    <h2 class="text-xl sm:text-2xl font-bold">Калькулятор финансовой подушки безопасности</h2>
+                    <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                        Рассчитайте, как быстро вы сформируете резерв на накопительном счете с ежемесячной капитализацией процентов
+                    </p>
+                </div>
+
+                <!-- Рекомендуемые ориентиры подушки -->
+                <div class="flex flex-wrap gap-3">
+                    <div class="bg-slate-50 dark:bg-slate-900/80 px-4 py-2.5 rounded-xl border border-slate-200/70 dark:border-slate-700">
+                        <div class="text-[11px] text-slate-400 font-medium">Минимум (3 мес. всех расходов)</div>
+                        <div id="target-3m" class="text-base font-bold text-slate-800 dark:text-white">289 500 ₽</div>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-slate-900/80 px-4 py-2.5 rounded-xl border border-slate-200/70 dark:border-slate-700">
+                        <div class="text-[11px] text-slate-400 font-medium">Комфорт (6 мес. всех расходов)</div>
+                        <div id="target-6m" class="text-base font-bold text-brand-600 dark:text-brand-400">579 000 ₽</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-6">
+                
+                <!-- Левая колонка: Ползунки и настройки (5 колонок) -->
+                <div class="lg:col-span-5 space-y-6">
+                    
+                    <!-- Стартовый капитал -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-sm font-medium text-slate-700 dark:text-slate-200">Стартовый капитал</label>
+                            <div class="relative">
+                                <input id="sim-initial-input" type="number" min="0" max="5000000" step="5000" value="0" onchange="syncSimFromInputs()" class="w-32 text-right pr-7 pl-2 py-1 text-sm font-bold rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-brand-500">
+                                <span class="absolute right-2.5 top-1 text-sm text-slate-400">₽</span>
+                            </div>
+                        </div>
+                        <input id="sim-initial-range" type="range" min="0" max="300000" step="5000" value="0" oninput="syncSimFromRanges()" class="w-full">
+                        <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                            <span>0 ₽</span>
+                            <span>150 000 ₽</span>
+                            <span>300 000 ₽</span>
+                        </div>
+                    </div>
+
+                    <!-- Ежемесячное пополнение -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1.5">
+                            <label class="text-sm font-medium text-slate-700 dark:text-slate-200">Ежемесячное пополнение</label>
+                            <div class="relative">
+                                <input id="sim-monthly-input" type="number" min="0" max="1000000" step="500" value="9000" onchange="syncSimFromInputs()" class="w-32 text-right pr-7 pl-2 py-1 text-sm font-bold rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-brand-500">
+                                <span class="absolute right-2.5 top-1 text-sm text-slate-400">₽</span>
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <button onclick="useFreeBalanceForSavings()" class="inline-flex items-center gap-1.5 text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline">
+                                <i class="ph-bold ph-magic-wand"></i>
+                                <span id="btn-use-balance-text">Подставить свободный остаток (9 149 ₽)</span>
+                            </button>
+                        </div>
+                        <input id="sim-monthly-range" type="range" min="0" max="50000" step="500" value="9000" oninput="syncSimFromRanges()" class="w-full">
+                        <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                            <span>0 ₽</span>
+                            <span>25 000 ₽</span>
+                            <span>50 000 ₽</span>
+                        </div>
+                    </div>
+
+                    <!-- Ставка по накопительному счету -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-sm font-medium text-slate-700 dark:text-slate-200">Ставка по счету (% годовых)</label>
+                            <div class="relative">
+                                <input id="sim-rate-input" type="number" min="0" max="40" step="0.5" value="16" onchange="syncSimFromInputs()" class="w-24 text-right pr-7 pl-2 py-1 text-sm font-bold rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-brand-500">
+                                <span class="absolute right-2.5 top-1 text-sm text-slate-400">%</span>
+                            </div>
+                        </div>
+                        <input id="sim-rate-range" type="range" min="0" max="25" step="0.5" value="16" oninput="syncSimFromRanges()" class="w-full">
+                        <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                            <span>0% (без вклада)</span>
+                            <span>12%</span>
+                            <span>25%</span>
+                        </div>
+                    </div>
+
+                    <!-- Срок накопления -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-sm font-medium text-slate-700 dark:text-slate-200">Срок накопления (месяцев)</label>
+                            <div class="relative">
+                                <input id="sim-months-input" type="number" min="1" max="120" step="1" value="24" onchange="syncSimFromInputs()" class="w-24 text-right pr-9 pl-2 py-1 text-sm font-bold rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-brand-500">
+                                <span class="absolute right-2.5 top-1 text-xs text-slate-400">мес</span>
+                            </div>
+                        </div>
+                        <input id="sim-months-range" type="range" min="3" max="60" step="1" value="24" oninput="syncSimFromRanges()" class="w-full">
+                        <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                            <span>3 мес</span>
+                            <span>1 год (12)</span>
+                            <span>2 года (24)</span>
+                            <span>5 лет (60)</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Правая колонка: Результаты, этапы и график (7 колонок) -->
+                <div class="lg:col-span-7 flex flex-col justify-between space-y-6">
+                    
+                    <!-- Карточки достижения целей (Этапы) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Этап 1: 1 платеж по ипотеке -->
+                        <div class="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-100 dark:border-indigo-900/60 flex items-start gap-3.5">
+                            <div class="w-10 h-10 rounded-xl bg-brand-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                                <i class="ph-bold ph-flag-banner text-lg"></i>
+                            </div>
+                            <div>
+                                <div class="text-xs font-medium text-slate-500 dark:text-slate-400">Цель №1: Платеж по ипотеке (<span id="goal-mortgage-sum">60 000 ₽</span>)</div>
+                                <div id="goal-mortgage-time" class="text-lg font-bold text-slate-900 dark:text-white mt-0.5">Через 6 месяцев</div>
+                                <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Защита от задержки зарплаты</div>
+                            </div>
+                        </div>
+
+                        <!-- Этап 2: Подушка на 3 месяца -->
+                        <div class="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/60 flex items-start gap-3.5">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-sm">
+                                <i class="ph-bold ph-shield-star text-lg"></i>
+                            </div>
+                            <div>
+                                <div class="text-xs font-medium text-slate-500 dark:text-slate-400">Цель №2: Подушка на 3 мес. (<span id="goal-3m-sum">289 500 ₽</span>)</div>
+                                <div id="goal-3m-time" class="text-lg font-bold text-slate-900 dark:text-white mt-0.5">Через 26 месяцев</div>
+                                <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Полная финансовая безопасность</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Итоговые цифры за выбранный период -->
+                    <div class="grid grid-cols-3 gap-3 p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/70 border border-slate-100 dark:border-slate-700/70">
+                        <div>
+                            <div class="text-[11px] text-slate-400 uppercase font-semibold">Итого накопится</div>
+                            <div id="sim-res-total" class="text-lg sm:text-xl font-bold text-brand-600 dark:text-brand-400 mt-0.5">254 115 ₽</div>
+                        </div>
+                        <div>
+                            <div class="text-[11px] text-slate-400 uppercase font-semibold">Свои взносы</div>
+                            <div id="sim-res-invested" class="text-base sm:text-lg font-semibold text-slate-700 dark:text-slate-200 mt-0.5">216 000 ₽</div>
+                        </div>
+                        <div>
+                            <div class="text-[11px] text-slate-400 uppercase font-semibold">Проценты банка</div>
+                            <div id="sim-res-interest" class="text-base sm:text-lg font-semibold text-emerald-600 dark:text-emerald-400 mt-0.5">+38 115 ₽</div>
+                        </div>
+                    </div>
+
+                    <!-- Столбчатый график роста накоплений по месяцам -->
+                    <div>
+                        <div class="flex items-center justify-between text-xs text-slate-400 mb-3">
+                            <span>Динамика роста капитала по месяцам:</span>
+                            <div class="flex items-center gap-4">
+                                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-brand-500"></span> Свои взносы</span>
+                                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-sm bg-emerald-400"></span> Начисленные %</span>
+                            </div>
+                        </div>
+                        <!-- Контейнер графика -->
+                        <div id="sim-chart" class="h-48 w-full flex items-end gap-1 sm:gap-1.5 pt-6 pb-2 px-2 bg-slate-50/60 dark:bg-slate-900/40 rounded-xl border border-slate-100 dark:border-slate-700/50 relative">
+                            <!-- Столбики генерируются через JS -->
+                        </div>
+                        <div class="flex justify-between text-[11px] text-slate-400 mt-1.5 px-1">
+                            <span>Старт (1 мес.)</span>
+                            <span id="sim-chart-mid-label">12 мес.</span>
+                            <span id="sim-chart-end-label">24 мес.</span>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-xs text-slate-400 border-t border-slate-200/60 dark:border-slate-800 mt-8">
+        Все расчеты выполняются локально в вашем браузере и автоматически сохраняются на устройстве.
+    </footer>
+
+    <!-- Логика приложения -->
+    <script>
+        const STORAGE_KEY = 'personal_finance_dashboard_v1';
+
+        // Исходные предзаполненные данные пользователя
+        const DEFAULT_STATE = {
+            incomes: [
+                { id: 'inc-1', title: 'Детские пособия', amount: 29959, day: 6 },
+                { id: 'inc-2', title: 'Аванс (зарплата)', amount: 25230, day: 10 },
+                { id: 'inc-3', title: 'Основная зарплата', amount: 50460, day: 25 }
+            ],
+            expenses: [
+                { id: 'exp-1', title: 'Ипотека', amount: 60000, category: 'mandatory', day: 27 },
+                { id: 'exp-2', title: 'ЖКХ и интернет', amount: 6500, category: 'mandatory', day: 15 },
+                { id: 'exp-3', title: 'Еда и продукты', amount: 20000, category: 'living', day: null },
+                { id: 'exp-4', title: 'Расходы на дочку', amount: 5000, category: 'family', day: null },
+                { id: 'exp-5', title: 'Развлечения', amount: 5000, category: 'family', day: null }
+            ],
+            simulator: {
+                initial: 0,
+                monthly: 9000,
+                rate: 16,
+                months: 24
+            },
+            theme: 'light'
+        };
+
+        const CATEGORY_META = {
+            mandatory: { label: 'Обязательные', color: '#f43f5e', tailwindBg: 'bg-rose-500', badge: 'bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300' },
+            living:    { label: 'Быт и питание', color: '#f59e0b', tailwindBg: 'bg-amber-500', badge: 'bg-amber-50 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300' },
+            family:    { label: 'Семья и отдых', color: '#3b82f6', tailwindBg: 'bg-blue-500', badge: 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300' },
+            other:     { label: 'Прочее',        color: '#8b5cf6', tailwindBg: 'bg-purple-500', badge: 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300' }
+        };
+
+        let state = loadState();
+
+        // Форматирование валюты
+        function formatRUB(val) {
+            const num = Math.round(Number(val) || 0);
+            return num.toLocaleString('ru-RU') + ' ₽';
+        }
+
+        // Загрузка состояния из localStorage
+        function loadState() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) return JSON.parse(JSON.stringify(DEFAULT_STATE));
+                const parsed = JSON.parse(raw);
+                return {
+                    incomes: Array.isArray(parsed.incomes) ? parsed.incomes : DEFAULT_STATE.incomes,
+                    expenses: Array.isArray(parsed.expenses) ? parsed.expenses : DEFAULT_STATE.expenses,
+                    simulator: { ...DEFAULT_STATE.simulator, ...(parsed.simulator || {}) },
+                    theme: parsed.theme || 'light'
+                };
+            } catch (e) {
+                return JSON.parse(JSON.stringify(DEFAULT_STATE));
+            }
+        }
+
+        // Сохранение состояния
+        function saveState(showNotification = false) {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+                if (showNotification) showToast('Изменения сохранены');
+            } catch (e) {
+                console.error('Ошибка сохранения в localStorage:', e);
+            }
+        }
+
+        // Всплывающее уведомление
+        let toastTimeout;
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2200);
+        }
+
+        // Переключение темы
+        function applyTheme() {
+            const html = document.documentElement;
+            const icon = document.getElementById('theme-icon');
+            if (state.theme === 'dark') {
+                html.classList.add('dark');
+                icon.className = 'ph ph-sun text-lg text-amber-400';
+            } else {
+                html.classList.remove('dark');
+                icon.className = 'ph ph-moon text-lg';
+            }
+        }
+
+        function toggleTheme() {
+            state.theme = state.theme === 'dark' ? 'light' : 'dark';
+            applyTheme();
+            saveState();
+        }
+
+        // Модальное окно сброса
+        function openResetModal() {
+            const modal = document.getElementById('reset-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeResetModal() {
+            const modal = document.getElementById('reset-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function confirmReset() {
+            const currentTheme = state.theme;
+            state = JSON.parse(JSON.stringify(DEFAULT_STATE));
+            state.theme = currentTheme;
+            saveState();
+            closeResetModal();
+            initSimulatorInputs();
+            renderAll();
+            showToast('Данные сброшены к исходным');
+        }
+
+        // Рендер списка доходов
+        function renderIncomesList() {
+            const container = document.getElementById('incomes-list');
+            container.innerHTML = '';
+
+            // Сортируем по дню месяца для удобства чтения
+            const sorted = [...state.incomes].sort((a, b) => (a.day || 31) - (b.day || 31));
+
+            sorted.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'grid grid-cols-12 gap-2 items-center bg-slate-50/80 dark:bg-slate-900/50 p-2 rounded-xl border border-slate-200/60 dark:border-slate-700/60';
+                row.innerHTML = `
+                    <input type="text" value="${escapeHtml(item.title)}" 
+                        onchange="updateIncome('${item.id}', 'title', this.value)"
+                        class="col-span-5 bg-transparent text-sm font-medium px-2 py-1 rounded-lg focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                    <div class="col-span-4 relative">
+                        <input type="number" value="${item.amount}" min="0" step="100"
+                            onchange="updateIncome('${item.id}', 'amount', this.value)"
+                            class="w-full bg-white dark:bg-slate-800 text-sm font-semibold px-2.5 py-1 pr-6 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-brand-500">
+                        <span class="absolute right-2 top-1 text-xs text-slate-400">₽</span>
+                    </div>
+                    <input type="number" value="${item.day || ''}" min="1" max="31" placeholder="—"
+                        onchange="updateIncome('${item.id}', 'day', this.value)"
+                        title="Число месяца"
+                        class="col-span-2 bg-white dark:bg-slate-800 text-xs font-medium text-center py-1 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-brand-500">
+                    <button onclick="deleteIncome('${item.id}')" class="col-span-1 flex items-center justify-center text-slate-400 hover:text-rose-500 transition p-1" title="Удалить">
+                        <i class="ph ph-trash text-base"></i>
+                    </button>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        // Рендер списка расходов
+        function renderExpensesList() {
+            const container = document.getElementById('expenses-list');
+            container.innerHTML = '';
+
+            state.expenses.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'grid grid-cols-12 gap-2 items-center bg-slate-50/80 dark:bg-slate-900/50 p-2 rounded-xl border border-slate-200/60 dark:border-slate-700/60';
+                row.innerHTML = `
+                    <input type="text" value="${escapeHtml(item.title)}" 
+                        onchange="updateExpense('${item.id}', 'title', this.value)"
+                        class="col-span-12 sm:col-span-4 bg-transparent text-sm font-medium px-2 py-1 rounded-lg focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-1 focus:ring-brand-500">
+                    
+                    <select onchange="updateExpense('${item.id}', 'category', this.value)"
+                        class="col-span-5 sm:col-span-3 bg-white dark:bg-slate-800 text-xs font-medium px-2 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-brand-500">
+                        <option value="mandatory" ${item.category === 'mandatory' ? 'selected' : ''}>Обязательные</option>
+                        <option value="living" ${item.category === 'living' ? 'selected' : ''}>Быт и питание</option>
+                        <option value="family" ${item.category === 'family' ? 'selected' : ''}>Семья и отдых</option>
+                        <option value="other" ${item.category === 'other' ? 'selected' : ''}>Прочее</option>
+                    </select>
+
+                    <div class="col-span-4 sm:col-span-3 relative">
+                        <input type="number" value="${item.amount}" min="0" step="100"
+                            onchange="updateExpense('${item.id}', 'amount', this.value)"
+                            class="w-full bg-white dark:bg-slate-800 text-sm font-semibold px-2.5 py-1 pr-6 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-brand-500">
+                        <span class="absolute right-2 top-1 text-xs text-slate-400">₽</span>
+                    </div>
+
+                    <input type="number" value="${item.day || ''}" min="1" max="31" placeholder="—"
+                        onchange="updateExpense('${item.id}', 'day', this.value)"
+                        title="День списания (оставьте пустым для равномерного расхода)"
+                        class="col-span-2 sm:col-span-1 bg-white dark:bg-slate-800 text-xs font-medium text-center py-1 rounded-lg border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-brand-500">
+
+                    <button onclick="deleteExpense('${item.id}')" class="col-span-1 flex items-center justify-center text-slate-400 hover:text-rose-500 transition p-1" title="Удалить">
+                        <i class="ph ph-trash text-base"></i>
+                    </button>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        // CRUD для Доходов
+        function updateIncome(id, field, value) {
+            const item = state.incomes.find(i => i.id === id);
+            if (!item) return;
+            if (field === 'amount') item.amount = Math.max(0, Number(value) || 0);
+            else if (field === 'day') {
+                const d = parseInt(value, 10);
+                item.day = (d >= 1 && d <= 31) ? d : null;
+            } else {
+                item.title = value.trim() || 'Доход';
+            }
+            saveState(true);
+            renderAll();
+        }
+
+        function addIncome() {
+            const titleEl = document.getElementById('new-inc-title');
+            const amountEl = document.getElementById('new-inc-amount');
+            const dayEl = document.getElementById('new-inc-day');
+
+            const title = titleEl.value.trim() || 'Новый доход';
+            const amount = Math.max(0, Number(amountEl.value) || 0);
+            const dayVal = parseInt(dayEl.value, 10);
+            const day = (dayVal >= 1 && dayVal <= 31) ? dayVal : 15;
+
+            if (amount <= 0) {
+                showToast('Укажите сумму дохода больше 0');
+                return;
+            }
+
+            state.incomes.push({
+                id: 'inc-' + Date.now(),
+                title,
+                amount,
+                day
+            });
+
+            titleEl.value = '';
+            amountEl.value = '';
+            dayEl.value = '';
+
+            saveState(true);
+            renderAll();
+        }
+
+        function deleteIncome(id) {
+            state.incomes = state.incomes.filter(i => i.id !== id);
+            saveState(true);
+            renderAll();
+        }
+
+        // CRUD для Расходов
+        function updateExpense(id, field, value) {
+            const item = state.expenses.find(e => e.id === id);
+            if (!item) return;
+            if (field === 'amount') item.amount = Math.max(0, Number(value) || 0);
+            else if (field === 'day') {
+                const d = parseInt(value, 10);
+                item.day = (d >= 1 && d <= 31) ? d : null;
+            } else if (field === 'category') {
+                item.category = value;
+            } else {
+                item.title = value.trim() || 'Расход';
+            }
+            saveState(true);
+            renderAll();
+        }
+
+        function addExpense() {
+            const titleEl = document.getElementById('new-exp-title');
+            const catEl = document.getElementById('new-exp-cat');
+            const amountEl = document.getElementById('new-exp-amount');
+            const dayEl = document.getElementById('new-exp-day');
+
+            const title = titleEl.value.trim() || 'Новый расход';
+            const category = catEl.value || 'other';
+            const amount = Math.max(0, Number(amountEl.value) || 0);
+            const dayVal = parseInt(dayEl.value, 10);
+            const day = (dayVal >= 1 && dayVal <= 31) ? dayVal : null;
+
+            if (amount <= 0) {
+                showToast('Укажите сумму расхода больше 0');
+                return;
+            }
+
+            state.expenses.push({
+                id: 'exp-' + Date.now(),
+                title,
+                category,
+                amount,
+                day
+            });
+
+            titleEl.value = '';
+            amountEl.value = '';
+            dayEl.value = '';
+
+            saveState(true);
+            renderAll();
+        }
+
+        function deleteExpense(id) {
+            state.expenses = state.expenses.filter(e => e.id !== id);
+            saveState(true);
+            renderAll();
+        }
+
+        // Расчет ключевых метрик
+        function calculateMetrics() {
+            const totalIncome = state.incomes.reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
+            const totalExpense = state.expenses.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+            const balance = totalIncome - totalExpense;
+            const balancePct = totalIncome > 0 ? Math.round((balance / totalIncome) * 1000) / 10 : 0;
+
+            const mandatoryExpense = state.expenses
+                .filter(e => e.category === 'mandatory')
+                .reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+
+            // Ищем ипотеку отдельно или берем крупнейший обязательный платеж
+            const mortgageItem = state.expenses.find(e => e.title.toLowerCase().includes('ипот')) || 
+                                 state.expenses.find(e => e.category === 'mandatory');
+            const mortgageAmount = mortgageItem ? Number(mortgageItem.amount) : 60000;
+
+            const mandatoryBurdenPct = totalIncome > 0 ? Math.round((mandatoryExpense / totalIncome) * 100) : 0;
+            const mortgageBurdenPct = totalIncome > 0 ? Math.round((mortgageAmount / totalIncome) * 100) : 0;
+
+            return {
+                totalIncome,
+                totalExpense,
+                balance,
+                balancePct,
+                mandatoryExpense,
+                mortgageAmount,
+                mandatoryBurdenPct,
+                mortgageBurdenPct
+            };
+        }
+
+        // Обновление KPI карточек и заголовков
+        function renderKPIs(m) {
+            document.getElementById('kpi-income').textContent = formatRUB(m.totalIncome);
+            document.getElementById('kpi-income-count').textContent = `${state.incomes.length} источник(а) поступлений`;
+            document.getElementById('incomes-header-sum').textContent = formatRUB(m.totalIncome);
+
+            document.getElementById('kpi-expense').textContent = formatRUB(m.totalExpense);
+            document.getElementById('kpi-expense-mandatory').textContent = `Обязательные: ${formatRUB(m.mandatoryExpense)}`;
+            document.getElementById('expenses-header-sum').textContent = formatRUB(m.totalExpense);
+
+            const balEl = document.getElementById('kpi-balance');
+            const balPctEl = document.getElementById('kpi-balance-pct');
+            const balSubEl = document.getElementById('kpi-balance-sub');
+            const balIcon = document.getElementById('kpi-balance-icon');
+
+            balEl.textContent = (m.balance > 0 ? '+' : '') + formatRUB(m.balance);
+            balPctEl.textContent = `${m.balancePct}%`;
+
+            if (m.balance >= 0) {
+                balEl.className = 'text-2xl sm:text-3xl font-bold text-emerald-600 dark:text-emerald-400';
+                balPctEl.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300';
+                balIcon.className = 'w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center';
+                balSubEl.textContent = 'Доступно для накоплений';
+            } else {
+                balEl.className = 'text-2xl sm:text-3xl font-bold text-rose-600 dark:text-rose-400';
+                balPctEl.className = 'text-xs font-semibold px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300';
+                balIcon.className = 'w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center';
+                balSubEl.textContent = 'Дефицит бюджета! Сократите расходы';
+            }
+
+            document.getElementById('kpi-burden').textContent = `${m.mandatoryBurdenPct}%`;
+            document.getElementById('kpi-mortgage-only').textContent = `Ипотека: ${m.mortgageBurdenPct}%`;
+            const bar = document.getElementById('kpi-burden-bar');
+            bar.style.width = `${Math.min(100, m.mandatoryBurdenPct)}%`;
+            bar.className = `h-full rounded-full transition-all duration-300 ${m.mandatoryBurdenPct > 65 ? 'bg-rose-500' : m.mandatoryBurdenPct > 45 ? 'bg-amber-500' : 'bg-emerald-500'}`;
+
+            // Обновление текста кнопки в калькуляторе
+            const freeForBtn = Math.max(0, m.balance);
+            document.getElementById('btn-use-balance-text').textContent = `Подставить свободный остаток (${formatRUB(freeForBtn)})`;
+        }
+
+        // Построение кольцевой диаграммы и прогресс-баров категорий
+        function renderDonutAndCategories(m) {
+            const svg = document.getElementById('donut-svg');
+            const breakdownContainer = document.getElementById('category-breakdown');
+            svg.innerHTML = '';
+            breakdownContainer.innerHTML = '';
+
+            const catSums = { mandatory: 0, living: 0, family: 0, other: 0 };
+            state.expenses.forEach(e => {
+                const c = catSums[e.category] !== undefined ? e.category : 'other';
+                catSums[c] += Number(e.amount) || 0;
+            });
+
+            const baseTotal = Math.max(m.totalIncome, m.totalExpense, 1);
+            const segments = [];
+
+            Object.keys(CATEGORY_META).forEach(key => {
+                if (catSums[key] > 0) {
+                    segments.push({
+                        key,
+                        label: CATEGORY_META[key].label,
+                        amount: catSums[key],
+                        pct: (catSums[key] / baseTotal) * 100,
+                        color: CATEGORY_META[key].color,
+                        tailwindBg: CATEGORY_META[key].tailwindBg
+                    });
+                }
+            });
+
+            if (m.balance > 0) {
+                segments.push({
+                    key: 'savings',
+                    label: 'Свободный остаток',
+                    amount: m.balance,
+                    pct: (m.balance / baseTotal) * 100,
+                    color: '#10b981',
+                    tailwindBg: 'bg-emerald-500'
+                });
+            }
+
+            // Фоновое кольцо
+            const bgCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            bgCircle.setAttribute('cx', '21');
+            bgCircle.setAttribute('cy', '21');
+            bgCircle.setAttribute('r', '15.91549430918954');
+            bgCircle.setAttribute('fill', 'transparent');
+            bgCircle.setAttribute('stroke', state.theme === 'dark' ? '#334155' : '#f1f5f9');
+            bgCircle.setAttribute('stroke-width', '5.5');
+            svg.appendChild(bgCircle);
+
+            let offset = 0;
+            segments.forEach(seg => {
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', '21');
+                circle.setAttribute('cy', '21');
+                circle.setAttribute('r', '15.91549430918954');
+                circle.setAttribute('fill', 'transparent');
+                circle.setAttribute('stroke', seg.color);
+                circle.setAttribute('stroke-width', '5.5');
+                circle.setAttribute('stroke-dasharray', `${seg.pct} ${100 - seg.pct}`);
+                circle.setAttribute('stroke-dashoffset', String(-offset));
+                svg.appendChild(circle);
+                offset += seg.pct;
+
+                // Строка в легенде
+                const itemDiv = document.createElement('div');
+                const pctDisplay = Math.round(seg.pct * 10) / 10;
+                itemDiv.innerHTML = `
+                    <div class="flex items-center justify-between text-xs mb-1">
+                        <div class="flex items-center gap-2">
+                            <span class="w-2.5 h-2.5 rounded-full ${seg.tailwindBg}"></span>
+                            <span class="font-medium text-slate-700 dark:text-slate-200">${seg.label}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-semibold text-slate-900 dark:text-white">${formatRUB(seg.amount)}</span>
+                            <span class="text-slate-400 w-10 text-right">${pctDisplay}%</span>
+                        </div>
+                    </div>
+                    <div class="w-full bg-slate-100 dark:bg-slate-700/70 h-1.5 rounded-full overflow-hidden">
+                        <div class="${seg.tailwindBg} h-full rounded-full" style="width: ${Math.min(100, seg.pct)}%"></div>
+                    </div>
+                `;
+                breakdownContainer.appendChild(itemDiv);
+            });
+
+            const expShare = m.totalIncome > 0 ? Math.round((m.totalExpense / m.totalIncome) * 100) : 0;
+            document.getElementById('donut-center-val').textContent = `${expShare}%`;
+            const centerSub = document.getElementById('donut-center-sub');
+            centerSub.textContent = (m.balance >= 0 ? '+' : '') + formatRUB(m.balance);
+            centerSub.className = `text-[11px] font-medium mt-0.5 ${m.balance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`;
+        }
+
+        // Календарь-таймлайн движения денег (1-31 число) и проверка кассового разрыва
+        function renderCashFlowTimeline() {
+            const eventsContainer = document.getElementById('timeline-events');
+            const gridContainer = document.getElementById('calendar-grid');
+            const statusBadge = document.getElementById('cashflow-status-badge');
+
+            eventsContainer.innerHTML = '';
+            gridContainer.innerHTML = '';
+
+            // 1. Собираем события с фиксированной датой для карточек таймлайна
+            const datedEvents = [];
+            state.incomes.forEach(inc => {
+                if (inc.day) datedEvents.push({ day: inc.day, type: 'income', title: inc.title, amount: Number(inc.amount) || 0 });
+            });
+            state.expenses.forEach(exp => {
+                if (exp.day) datedEvents.push({ day: exp.day, type: 'expense', title: exp.title, amount: Number(exp.amount) || 0 });
+            });
+            datedEvents.sort((a, b) => a.day - b.day);
+
+            datedEvents.forEach(ev => {
+                const card = document.createElement('div');
+                const isInc = ev.type === 'income';
+                card.className = `p-2.5 rounded-xl border ${isInc ? 'bg-emerald-50/50 border-emerald-200/70 dark:bg-emerald-950/30 dark:border-emerald-900/50' : 'bg-rose-50/50 border-rose-200/70 dark:bg-rose-950/30 dark:border-rose-900/50'}`;
+                card.innerHTML = `
+                    <div class="flex items-center justify-between text-[11px] font-bold ${isInc ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'} mb-0.5">
+                        <span>${ev.day} число</span>
+                        <i class="ph-bold ${isInc ? 'ph-arrow-down-left' : 'ph-arrow-up-right'}"></i>
+                    </div>
+                    <div class="text-xs font-medium text-slate-700 dark:text-slate-200 truncate" title="${escapeHtml(ev.title)}">${escapeHtml(ev.title)}</div>
+                    <div class="text-xs font-bold text-slate-900 dark:text-white mt-0.5">${isInc ? '+' : '−'}${formatRUB(ev.amount)}</div>
+                `;
+                eventsContainer.appendChild(card);
+            });
+
+            // 2. Расчет баланса по дням месяца (1..31)
+            // Повседневные расходы без даты делим на 30 дней, но списываем их мягко после первых поступлений,
+            // либо проверяем накопительный баланс к ключевым датам списаний (особенно к 27 числу).
+            const undatedExpensesTotal = state.expenses
+                .filter(e => !e.day)
+                .reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+            const dailyLivingBurn = undatedExpensesTotal / 31;
+
+            document.getElementById('cashflow-explanation').innerHTML = 
+                `Повседневные расходы без фиксированной даты (${formatRUB(undatedExpensesTotal)}) распределяются по ~<b>${formatRUB(dailyLivingBurn)}/день</b>. К 27 числу все 3 поступления дохода уже получены, что позволяет спокойно закрыть платеж по ипотеке.`;
+
+            // Чтобы в начале месяца (1-5 числа до детских пособий 6 числа) не показывать искусственный минус
+            // при положительном месячном балансе, учитываем переходящий остаток оборотных средств на начало месяца
+            const firstIncomeDay = state.incomes.length > 0 ? Math.min(...state.incomes.map(i => i.day || 1)) : 1;
+            let runningBalance = Math.max(0, (firstIncomeDay - 1) * dailyLivingBurn);
+            let hasCashGapOnFixedDates = false;
+            let gapDay = null;
+
+            for (let day = 1; day <= 31; day++) {
+                const dayIncomes = state.incomes.filter(i => i.day === day);
+                const dayExpenses = state.expenses.filter(e => e.day === day);
+
+                const incSum = dayIncomes.reduce((a, b) => a + (Number(b.amount) || 0), 0);
+                const expSum = dayExpenses.reduce((a, b) => a + (Number(b.amount) || 0), 0);
+
+                runningBalance += incSum - expSum - dailyLivingBurn;
+
+                if (dayExpenses.length > 0 && runningBalance < -100) {
+                    hasCashGapOnFixedDates = true;
+                    if (!gapDay) gapDay = day;
+                }
+
+                const cell = document.createElement('div');
+                const hasInc = incSum > 0;
+                const hasExp = expSum > 0;
+
+                let cellStyle = 'bg-slate-50 dark:bg-slate-900/50 border-slate-200/60 dark:border-slate-700/60 text-slate-600 dark:text-slate-400';
+                if (hasInc && hasExp) {
+                    cellStyle = 'bg-amber-50 dark:bg-amber-950/60 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200 font-bold ring-1 ring-amber-400/50';
+                } else if (hasInc) {
+                    cellStyle = 'bg-emerald-50 dark:bg-emerald-950/60 border-emerald-300 dark:border-emerald-700 text-emerald-700 dark:text-emerald-300 font-bold';
+                } else if (hasExp) {
+                    cellStyle = runningBalance >= 0 
+                        ? 'bg-rose-50 dark:bg-rose-950/60 border-rose-300 dark:border-rose-700 text-rose-700 dark:text-rose-300 font-bold'
+                        : 'bg-rose-600 text-white border-rose-700 font-bold animate-pulse';
+                }
+
+                const tooltipParts = [`${day} число`];
+                dayIncomes.forEach(i => tooltipParts.push(`+${formatRUB(i.amount)} (${i.title})`));
+                dayExpenses.forEach(e => tooltipParts.push(`-${formatRUB(e.amount)} (${e.title})`));
+                tooltipParts.push(`Прогноз остатка: ${formatRUB(runningBalance)}`);
+
+                cell.className = `p-1.5 rounded-lg border text-center flex flex-col items-center justify-center min-h-[46px] transition cursor-default ${cellStyle}`;
+                cell.title = tooltipParts.join('\n');
+                cell.innerHTML = `
+                    <div class="text-[11px] leading-none flex items-center gap-0.5">
+                        <span>${day}</span>
+                        ${hasInc ? '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>' : ''}
+                        ${hasExp ? '<span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span>' : ''}
+                    </div>
+                    <div class="text-[10px] mt-1 opacity-80 truncate max-w-full">${Math.round(runningBalance / 1000)}к</div>
+                `;
+                gridContainer.appendChild(cell);
+            }
+
+            if (!hasCashGapOnFixedDates && runningBalance >= 0) {
+                statusBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 self-start';
+                statusBadge.innerHTML = `<i class="ph-fill ph-check-circle text-sm"></i><span>К дате ипотеки денег хватает</span>`;
+            } else {
+                statusBadge.className = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-rose-50 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 self-start';
+                statusBadge.innerHTML = `<i class="ph-fill ph-warning text-sm"></i><span>Риск кассового разрыва (${gapDay ? gapDay + ' числа' : 'в конце месяца'})</span>`;
+            }
+        }
+
+        // Инициализация полей симулятора из state
+        function initSimulatorInputs() {
+            document.getElementById('sim-initial-input').value = state.simulator.initial;
+            document.getElementById('sim-initial-range').value = state.simulator.initial;
+            document.getElementById('sim-monthly-input').value = state.simulator.monthly;
+            document.getElementById('sim-monthly-range').value = state.simulator.monthly;
+            document.getElementById('sim-rate-input').value = state.simulator.rate;
+            document.getElementById('sim-rate-range').value = state.simulator.rate;
+            document.getElementById('sim-months-input').value = state.simulator.months;
+            document.getElementById('sim-months-range').value = state.simulator.months;
+        }
+
+        function syncSimFromRanges() {
+            state.simulator.initial = Number(document.getElementById('sim-initial-range').value) || 0;
+            state.simulator.monthly = Number(document.getElementById('sim-monthly-range').value) || 0;
+            state.simulator.rate = Number(document.getElementById('sim-rate-range').value) || 0;
+            state.simulator.months = Number(document.getElementById('sim-months-range').value) || 12;
+
+            document.getElementById('sim-initial-input').value = state.simulator.initial;
+            document.getElementById('sim-monthly-input').value = state.simulator.monthly;
+            document.getElementById('sim-rate-input').value = state.simulator.rate;
+            document.getElementById('sim-months-input').value = state.simulator.months;
+
+            saveState();
+            renderSimulator(calculateMetrics());
+        }
+
+        function syncSimFromInputs() {
+            state.simulator.initial = Math.max(0, Number(document.getElementById('sim-initial-input').value) || 0);
+            state.simulator.monthly = Math.max(0, Number(document.getElementById('sim-monthly-input').value) || 0);
+            state.simulator.rate = Math.max(0, Math.min(100, Number(document.getElementById('sim-rate-input').value) || 0));
+            state.simulator.months = Math.max(1, Math.min(120, parseInt(document.getElementById('sim-months-input').value, 10) || 24));
+
+            document.getElementById('sim-initial-range').value = Math.min(300000, state.simulator.initial);
+            document.getElementById('sim-monthly-range').value = Math.min(50000, state.simulator.monthly);
+            document.getElementById('sim-rate-range').value = Math.min(25, state.simulator.rate);
+            document.getElementById('sim-months-range').value = Math.min(60, state.simulator.months);
+
+            saveState(true);
+            renderSimulator(calculateMetrics());
+        }
+
+        function useFreeBalanceForSavings() {
+            const m = calculateMetrics();
+            const free = Math.max(0, Math.round(m.balance));
+            state.simulator.monthly = free;
+            document.getElementById('sim-monthly-input').value = free;
+            document.getElementById('sim-monthly-range').value = Math.min(50000, free);
+            saveState(true);
+            renderSimulator(m);
+        }
+
+        // Расчет за сколько месяцев накопится целевая сумма
+        function calcMonthsToTarget(targetAmount, initial, monthly, annualRate) {
+            if (initial >= targetAmount) return 0;
+            if (monthly <= 0 && (initial <= 0 || annualRate <= 0)) return Infinity;
+
+            const r = (annualRate / 100) / 12;
+            let balance = initial;
+            for (let m = 1; m <= 360; m++) {
+                balance = balance * (1 + r) + monthly;
+                if (balance >= targetAmount) return m;
+            }
+            return Infinity;
+        }
+
+        function formatMonthsText(m) {
+            if (m === 0) return 'Уже накоплено!';
+            if (!isFinite(m)) return 'Увеличьте взнос';
+            return `Через ${m} мес.`;
+        }
+
+        // Рендер калькулятора подушки безопасности и графика
+        function renderSimulator(m) {
+            const target3m = m.totalExpense * 3;
+            const target6m = m.totalExpense * 6;
+
+            document.getElementById('target-3m').textContent = formatRUB(target3m);
+            document.getElementById('target-6m').textContent = formatRUB(target6m);
+
+            document.getElementById('goal-mortgage-sum').textContent = formatRUB(m.mortgageAmount);
+            document.getElementById('goal-3m-sum').textContent = formatRUB(target3m);
+
+            const { initial, monthly, rate, months } = state.simulator;
+            const r = (rate / 100) / 12;
+
+            // Считаем сколько месяцев до 1 ипотеки и до подушки на 3 месяца
+            const mToMortgage = calcMonthsToTarget(m.mortgageAmount, initial, monthly, rate);
+            const mTo3m = calcMonthsToTarget(target3m, initial, monthly, rate);
+
+            document.getElementById('goal-mortgage-time').textContent = formatMonthsText(mToMortgage);
+            document.getElementById('goal-3m-time').textContent = formatMonthsText(mTo3m);
+
+            // Помесячная симуляция
+            const history = [];
+            let currentTotal = initial;
+            let currentInvested = initial;
+
+            for (let i = 1; i <= months; i++) {
+                const interestEarned = currentTotal * r;
+                currentTotal += interestEarned + monthly;
+                currentInvested += monthly;
+                history.push({
+                    month: i,
+                    total: currentTotal,
+                    invested: currentInvested,
+                    interest: Math.max(0, currentTotal - currentInvested)
+                });
+            }
+
+            const finalPoint = history[history.length - 1] || { total: initial, invested: initial, interest: 0 };
+            document.getElementById('sim-res-total').textContent = formatRUB(finalPoint.total);
+            document.getElementById('sim-res-invested').textContent = formatRUB(finalPoint.invested);
+            document.getElementById('sim-res-interest').textContent = '+' + formatRUB(finalPoint.interest);
+
+            // Отрисовка графика (если месяцев много, берем до 30 равномерных точек для красоты)
+            const chartEl = document.getElementById('sim-chart');
+            chartEl.innerHTML = '';
+            const maxVal = Math.max(finalPoint.total, 1);
+
+            const step = months > 36 ? Math.ceil(months / 30) : 1;
+            const filtered = history.filter((_, idx) => (idx + 1) % step === 0 || idx === history.length - 1);
+
+            filtered.forEach(pt => {
+                const totalHeightPct = Math.max(4, (pt.total / maxVal) * 100);
+                const interestSharePct = pt.total > 0 ? (pt.interest / pt.total) * 100 : 0;
+                const investedSharePct = 100 - interestSharePct;
+
+                const col = document.createElement('div');
+                col.className = 'flex-1 h-full flex flex-col justify-end items-center group relative';
+                col.innerHTML = `
+                    <!-- Всплывающий тултип при наведении -->
+                    <div class="opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity absolute -top-8 z-20 bg-slate-900 text-white text-[10px] px-2 py-1 rounded shadow whitespace-nowrap">
+                        ${pt.month} мес: ${formatRUB(pt.total)}
+                    </div>
+                    <div class="w-full rounded-t-sm overflow-hidden flex flex-col justify-end transition-all duration-200 group-hover:brightness-110" style="height: ${totalHeightPct}%">
+                        <div class="w-full bg-emerald-400" style="height: ${interestSharePct}%" title="Проценты: ${formatRUB(pt.interest)}"></div>
+                        <div class="w-full bg-brand-500" style="height: ${investedSharePct}%" title="Свои взносы: ${formatRUB(pt.invested)}"></div>
+                    </div>
+                `;
+                chartEl.appendChild(col);
+            });
+
+            document.getElementById('sim-chart-mid-label').textContent = `${Math.round(months / 2)} мес.`;
+            document.getElementById('sim-chart-end-label').textContent = `${months} мес.`;
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        function renderAll() {
+            const metrics = calculateMetrics();
+            renderIncomesList();
+            renderExpensesList();
+            renderKPIs(metrics);
+            renderDonutAndCategories(metrics);
+            renderCashFlowTimeline();
+            renderSimulator(metrics);
+        }
+
+        // Инициализация при загрузке
+        window.onload = function() {
+            applyTheme();
+            initSimulatorInputs();
+            renderAll();
+        };
+    </script>
+</body>
+</html>
